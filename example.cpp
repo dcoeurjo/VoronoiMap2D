@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <vector>
 #include <array>
-#include "VoronoiMap2D.h"
+//#include "VoronoiMap2D.h"
 
 template <typename T>
 struct Image{
