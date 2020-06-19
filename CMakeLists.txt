@@ -1,0 +1,1 @@
+project(VoronoiMap2D)
