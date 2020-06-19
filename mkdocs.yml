@@ -1,4 +1,4 @@
-site_name: Fast Exact Separable Vornoi Map / Distance Transformation in 2D
+site_name: Fast Exact Separable Vornoi Map/Distance Transformation in 2D
 markdown_extensions:
   - codehilite
   - attr_list
