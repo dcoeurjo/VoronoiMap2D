@@ -1,0 +1,45 @@
+site_name: Fast Exact Separable Vornoi Map / Distance Transformation in 2D
+markdown_extensions:
+  - codehilite
+  - attr_list
+  - admonition
+  - footnotes
+  - markdown.extensions.footnotes
+  - markdown.extensions.smarty
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.arithmatex
+  - pymdownx.emoji
+
+extra:
+  search:
+    tokenizer: '[\s\-\.::]+'
+
+theme:
+  name: 'material'
+  palette:
+    primary: 'light-green'
+    accent: 'deep orange'
+  font:
+    text: 'PT Serif'
+    code: 'Inconsolata'
+
+extra_css:
+  - extras.css
+
+extra_javascript:
+  - 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-MML-AM_CHTML'
+
+repo_name: 'dcoeurjo/VoronoiMap2D'
+repo_url: 'https://github.com/dcoeurjo/VoronoiMap2D'
+edit_uri: ''
+
+
+docs_dir: 'docs-source'
+site_dir: 'docs'
+
+nav:
+  - Introduction: 'index.md'
+  - Author/License: 'license.md'
+  - Changelog: 'Changelog.md'
