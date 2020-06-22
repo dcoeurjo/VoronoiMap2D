@@ -28,23 +28,81 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <vector>
 #include <array>
+#include <assert.h>
+
 //#include "VoronoiMap2D.h"
 
+using Index = std::size_t;
+
+//Simple templated Image class
 template <typename T>
 struct Image{
-  Image(const std::size_t width, const std::size_t height): m_width(width), m_height(height){ m_data.resize(width*height);}
-  T &operator()(const std::size_t x,
-                const std::size_t y) {return m_data[x+y*m_width];}
-  const T &operator()(const std::size_t x,
-              const std::size_t y) const {return m_data[x+y*m_width];}
-  std::size_t width(){return m_width;}
-  std::size_t height(){return m_width;}
+  Image(const Index width, const Index height): m_width(width), m_height(height){ m_data.resize(width*height);}
+  T &operator()(const Index x,
+                const Index y) {return m_data[x+y*m_width];}
+  const T &operator()(const Index x,
+              const Index y) const {return m_data[x+y*m_width];}
+  T &operator()(const Index idx) {return m_data[idx];}
+  const T &operator()(const Index idx) const {return m_data[idx];}
+  std::size_t width() const {return m_width;}
+  std::size_t height() const {return m_width;}
+  Index index(const std::size_t x, const std::size_t y) {return x+y*m_width;}
   std::size_t m_width;
   std::size_t m_height;
   std::vector<T> m_data;
 };
 
-using Point = std::array<size_t,2>;
+
+auto sitePredicate =  [](double val){ return (val==42)? true:false; };
+
+template<typename T>
+Image<Index> computeVoronoiMap(const Image<T> &source)
+{
+  Image<Index> voromap(source.width(), source.height());
+  const Index infty =source.width()*source.height() + 1;
+  
+  auto closest1D=[](const int32_t x, const int32_t siteA, const int32_t siteB){ return std::abs(x-siteB) <= std::abs(x-siteA);};
+  
+  for(auto i=0 ; i < source.width()* source.height(); ++i)
+  {
+    if (sitePredicate(source(i)))
+      voromap(i) = i;
+    else
+      voromap(i) = infty;
+  }
+  
+  for(auto y = 0; y < source.height(); ++y)
+  {
+    int32_t lastsiteabscissa = infty;
+    std::vector<Index> sites(source.width());
+    unsigned int nbSites=0;
+    
+    //first scan
+    for(auto x = 0; x < source.width(); ++x)
+      if (voromap(x,y) != infty)
+        sites[nbSites++]= x;
+        
+    if (nbSites != 0)
+    {
+      int32_t siteId=0;
+      for(auto x = 0; x < source.width(); ++x)
+      {
+        while ( ( siteId < nbSites - 1 ) &&
+               ( closest1D(x, sites[siteId], sites[siteId+1])))
+          siteId++;
+              
+        voromap(x,y) = sites[siteId];
+      }
+    }
+  }
+  for(auto x = 0; x < source.width(); ++x)
+    for(auto y = 0; y < source.height(); ++y)
+    {
+      
+    }
+  return voromap;
+}
+
 
 int main()
 {
@@ -55,10 +113,7 @@ int main()
   test(64,64) = 42.0;
   std::cout<<"Test w/r: "<<test(64,64)<<std::endl;
   
-  Image<Point> voromap(128,128);
-  voromap(12,12) = {1,2};
-  std::cout<<"Test w/r: "<<voromap(12,12)[0]<<","<<voromap(12,12)[1]<<std::endl;
-  
+  Image<Index> voro = computeVoronoiMap<double>(test);
   
   return 0;
 }
