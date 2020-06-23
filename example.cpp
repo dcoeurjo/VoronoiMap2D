@@ -38,15 +38,15 @@ using Index = std::size_t;
 template <typename T>
 struct Image{
   Image(const Index width, const Index height): m_width(width), m_height(height){ m_data.resize(width*height);}
-  T &operator()(const Index x,
-                const Index y) {return m_data[x+y*m_width];}
-  const T &operator()(const Index x,
-              const Index y) const {return m_data[x+y*m_width];}
+  T &operator()(const Index x, const Index y) {return m_data[x+y*m_width];}
+  const T &operator()(const Index x, const Index y) const {return m_data[x+y*m_width];}
   T &operator()(const Index idx) {return m_data[idx];}
   const T &operator()(const Index idx) const {return m_data[idx];}
   std::size_t width() const {return m_width;}
-  std::size_t height() const {return m_width;}
-  Index index(const std::size_t x, const std::size_t y) {return x+y*m_width;}
+  std::size_t height() const {return m_height;}
+  Index index(const Index x, const Index y) const {return x+y*m_width;}
+  Index getX(const Index pos) const {return pos % m_width;}
+  Index getY(const Index pos) const {return pos / m_width;}
   std::size_t m_width;
   std::size_t m_height;
   std::vector<T> m_data;
@@ -61,45 +61,123 @@ Image<Index> computeVoronoiMap(const Image<T> &source)
   Image<Index> voromap(source.width(), source.height());
   const Index infty =source.width()*source.height() + 1;
   
-  auto closest1D=[](const int32_t x, const int32_t siteA, const int32_t siteB){ return std::abs(x-siteB) <= std::abs(x-siteA);};
-  
-  for(auto i=0 ; i < source.width()* source.height(); ++i)
+  auto closest = [&source](const Index x, const Index y,
+                           const Index siteA, const Index siteB)
   {
-    if (sitePredicate(source(i)))
-      voromap(i) = i;
-    else
-      voromap(i) = infty;
-  }
+    std::cout<<"Closest" ;
+    auto sAx=source.getX(siteA), sAy=source.getY(siteA);
+    auto sBx=source.getX(siteB), sBy=source.getY(siteB);
+    return (x-sAx)*(x-sAx) + (y-sAy)*(y-sAy) > (x-sBx)*(x-sBx) + (y-sBy)*(y-sBy);
+  };
   
+  auto hiddenBy = [&source](const Index A, const Index B, const Index C,
+                            const Index slabX)
+  {
+    auto sAx=source.getX(A), sAy=source.getY(A);
+    auto sBx=source.getX(B), sBy=source.getY(B);
+    auto sCx=source.getX(C), sCy=source.getY(C);
+    int a,b, c;
+    a = sBy - sAy;
+    b = sCy - sBy;
+    c = a + b;
+    int d2_A=sAx*sAx, d2_B=sBx*sBx, d2_C=sCx*sCx;
+    return (c * d2_A -  b*d2_B - a*d2_C - a*b*c) > 0 ;
+  };
+  
+  auto print =[&](const Index pos){if (pos == infty) return std::string("(inf)");
+    else return "("+std::to_string(source.getX(pos))+","+std::to_string(source.getY(pos))+") ["+std::to_string(pos)+"]";};
+  
+  std::cout<<"infty= "<<infty<< " " <<print(infty)<<std::endl;
+#pragma omp parallel for schedule(dynamic)
   for(auto y = 0; y < source.height(); ++y)
   {
-    int32_t lastsiteabscissa = infty;
-    std::vector<Index> sites(source.width());
-    unsigned int nbSites=0;
-    
-    //first scan
-    for(auto x = 0; x < source.width(); ++x)
-      if (voromap(x,y) != infty)
-        sites[nbSites++]= x;
-        
-    if (nbSites != 0)
+    Index prev=infty;
+    bool firstSite=true;
+    for (Index x=0; x < source.width(); ++x)
     {
-      int32_t siteId=0;
-      for(auto x = 0; x < source.width(); ++x)
+      voromap(x,y) = source.index(prev,y);
+      if (sitePredicate(source(x,y)))
       {
-        while ( ( siteId < nbSites - 1 ) &&
-               ( closest1D(x, sites[siteId], sites[siteId+1])))
-          siteId++;
-              
-        voromap(x,y) = sites[siteId];
+        Index site =source.index(x,y);
+        voromap(x,y) = site;
+        if (firstSite)
+        {
+          firstSite=false;
+          for(auto xx=0;xx < x; ++xx)
+            voromap(xx,y) = site;
+        }
+        else //rewrite
+          for(Index xx=(prev+x)/2+1 ; xx < x ; ++xx)
+            voromap(xx,y) = site;
+        prev = x;
       }
     }
   }
-  for(auto x = 0; x < source.width(); ++x)
+  std::cout<<"First Step"<<std::endl;
+  for(auto y=0; y < voromap.height(); ++y)
+  {
+    for(auto x=0; x < voromap.width(); ++x)
+      std::cout<<print(voromap(x,y))<<" ";
+    std::cout<<std::endl;
+  }
+  std::cout<<std::endl;
+  
+  
+//#pragma omp parallel for schedule(dynamic)
+  for(auto x = 0; x < 1; ++x)// source.width(); ++x)
+  {
+    std::vector<Index> sites(source.height());
+    std::size_t nbSites=0;
+    //Looking for the sites
     for(auto y = 0; y < source.height(); ++y)
+      if (voromap(x,y) != infty)
+        sites[nbSites++] = voromap(x,y);
+    
+    std::cout<<"Sites: "<<std::endl;
+    for(auto i=0; i < nbSites; ++i)
+      std::cout<<print(sites[i])<<" - ";
+    std::cout<<std::endl;
+    
+    //Prune
+    std::vector<bool> remove(nbSites,false);
+    Index pos = 2;
+    if (nbSites>=2)
     {
-      
+      Index A=sites[0], B=sites[1], C=sites[2];
+      while (( pos < nbSites ) &&
+             ( hiddenBy(A,B,C,x)))
+      {
+        //remove B
+        std::cout<<"Hidden by : "<<print(B)<<std::endl;
+        remove[B]=true;
+        B = C;
+        C = sites[pos];
+      }
     }
+    
+    std::cout<<"Sites: "<<std::endl;
+      for(auto i=0; i < nbSites; ++i)
+        std::cout<<print(sites[i])<< (remove[i]? "X":"ok") <<" - ";
+      std::cout<<std::endl;
+      
+    
+    //Rewrite
+    pos = 0;
+    if (nbSites==1)
+      for(auto y = 0; y < source.height(); ++y)
+        voromap(x,y) = sites[0];
+    else
+      for(auto y = 0; y < source.height(); ++y)
+      {
+        std::cout<<"y= "<<y<<std::endl;
+        while ((pos < (nbSites-1)) &&
+               !remove[pos] &&
+               (closest( x,y, sites[pos] , sites[pos+1])))
+          pos ++;
+        voromap(x,y) = sites[pos];
+      }
+    
+  }
   return voromap;
 }
 
@@ -107,13 +185,22 @@ Image<Index> computeVoronoiMap(const Image<T> &source)
 int main()
 {
   //init
-  Image<double> test(128,128);
-  std::cout<<"Test image: "<<test.m_width<<"x"<<test.m_height<<std::endl;
-  std::cout<<"Test read: "<<test(64,64)<<std::endl;
-  test(64,64) = 42.0;
-  std::cout<<"Test w/r: "<<test(64,64)<<std::endl;
-  
+  Image<double> test(16,4);
+  test(4,0)  = 42.0;
+  test(12,0) = 42.0;
+  test(8,1)  = 42.0;
+  test(0,3)  = 42.0;
+  test(2,3)  = 42.0;
   Image<Index> voro = computeVoronoiMap<double>(test);
-  
+
+  std::cout<<std::endl;
+  std::cout<<std::endl;
+
+  for(auto y=0; y < voro.height(); ++y)
+  {
+    for(auto x=0; x < voro.width(); ++x)
+      std::cout<<voro(x,y)<<" ";
+    std::cout<<std::endl;
+  }
   return 0;
 }

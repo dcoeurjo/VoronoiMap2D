@@ -166,6 +166,7 @@ DGtal::VoronoiMap<S,P,TSep, TImage>::computeOtherStep1D ( const Point &startingP
 
           if ( psite != myInfinity )
             {
+              
               while (( Sites.size() >= 2 ) &&
                      ( myMetricPtr->hiddenBy(Sites[Sites.size()-2], Sites[Sites.size()-1] ,
                                              psite, startingPoint, endPoint, dim) ))
