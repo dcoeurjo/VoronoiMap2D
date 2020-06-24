@@ -81,7 +81,7 @@ Image<Index> computeVoronoiMap(const Image<T> &source)
     b = sCy - sBy;
     c = a + b;
     int d2_A=sAx*sAx, d2_B=sBx*sBx, d2_C=sCx*sCx;
-    return (c * d2_A -  b*d2_B - a*d2_C - a*b*c) > 0 ;
+    return (c * d2_B -  b*d2_A - a*d2_C - a*b*c) > 0 ;
   };
   
   auto print =[&](const Index pos){if (pos == infty) return std::string("(inf)");
@@ -143,15 +143,15 @@ Image<Index> computeVoronoiMap(const Image<T> &source)
     Index pos = 2;
     if (nbSites>=2)
     {
-      Index A=sites[0], B=sites[1], C=sites[2];
-      while (( pos < nbSites ) &&
-             ( hiddenBy(A,B,C,x)))
+      Index A=0, B=1, C=2;
+      while (( C < nbSites ) &&
+             ( hiddenBy(sites[A],sites[B],sites[C],x)))
       {
         //remove B
-        std::cout<<"Hidden by : "<<print(B)<<std::endl;
+        std::cout<<"Hidden by : "<<print(sites[B])<<std::endl;
         remove[B]=true;
-        B = C;
-        C = sites[pos];
+        B++;
+        C++;
       }
     }
     
@@ -171,7 +171,7 @@ Image<Index> computeVoronoiMap(const Image<T> &source)
       {
         std::cout<<"y= "<<y<<std::endl;
         while ((pos < (nbSites-1)) &&
-               !remove[pos] &&
+               remove[pos] &&
                (closest( x,y, sites[pos] , sites[pos+1])))
           pos ++;
         voromap(x,y) = sites[pos];
