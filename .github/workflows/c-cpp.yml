@@ -18,7 +18,8 @@ jobs:
          mkdir build
          cd build
          cmake ..
-    - name: make
+    - name: make and test
       run: |
         cd build
         make
+        ./example
