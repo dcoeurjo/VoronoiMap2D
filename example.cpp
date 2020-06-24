@@ -100,7 +100,6 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
   auto hiddenBy = [&source](const Index A, const Index B, const Index C,
                             const Index slabX)
   {
-    std::cout<<"Checking "<<A<<" -- "<<B<<" -- "<<C<<" along ="<<slabX<<std::endl;
     auto sAx=source.getX(A), sAy=source.getY(A);
     auto sBx=source.getX(B), sBy=source.getY(B);
     auto sCx=source.getX(C), sCy=source.getY(C);
@@ -115,8 +114,7 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
   auto print =[&](const Index pos){if (pos == infty) return std::string("(inf)");
     else return "("+std::to_string(source.getX(pos))+","+std::to_string(source.getY(pos))+")["+std::to_string(pos)+"]";};
   
-  std::cout<<"infty= "<<infty<< " " <<print(infty)<<std::endl;
-//#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
   for(auto y = 0; y < source.height(); ++y)
   {
     Index prev=infty;
@@ -150,7 +148,7 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
   }
   std::cout<<std::endl;
   
-//#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
   for(auto x = 0; x < source.width(); ++x)
   {
     std::vector<Index> sites;
@@ -197,11 +195,9 @@ int main()
   for(auto i = 0 ; i < 64; ++i)
     test( rand() % (64*64) ) = 42.0;
   exportSVG(test,"test.svg");
-
-  auto sitePredicate =  [](const double val){ return (val==42)? true:false; };
-
-  Image<Index> voro = computeVoronoiMap(test, sitePredicate);
   
+  Image<Index> voro = computeVoronoiMap<double>(test, [](const double val){ return (val==42)? true:false; } );
+    
   exportSVG(voro,"result.svg");
   exportSVGDistance(voro,"result-dt.svg",8);
 
