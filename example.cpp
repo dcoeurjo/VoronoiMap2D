@@ -55,6 +55,7 @@ struct Image{
   std::vector<T> m_data;
 };
 
+//Export an image to an SVG file (random colormap)
 template <typename Image>
 void exportSVG(const Image &image, const std::string &filename, const int scale=10)
 {
@@ -64,8 +65,9 @@ void exportSVG(const Image &image, const std::string &filename, const int scale=
     ofs<<"<rect x=\""<<image.getX(i)*scale<<"\" y=\""<< image.getY(i)*scale<<"\"  width=\""<<scale<<"\"  height=\""<<scale<<"\" style=\"fill:rgb("<< 255-(int)image(i) *12 %256<<","<<255-(int)image(i) *123 %256<<","<<255-(int)image(i) *7 %256<< ")\"  stroke=\"lightgray\"/>"<<std::endl;
   ofs<<"</svg>"<<std::endl;
 }
+//Export an image to an SVG file (distance based colormap assuming the image is a voronoi map)
 template <typename Image>
-void exportSVGDistance(const Image &image, const std::string &filename, const double max=255.0, const int scale=10)
+void exportSVGDistance(const Image &image, const std::string &filename, const double maxDistance=255.0, const int scale=10)
 {
   std::ofstream ofs (filename, std::ofstream::out);
   ofs<<"<svg width=\""<< image.width() * scale<<"\" height=\""<<image.height()*scale<<"\">"<<std::endl;
@@ -74,7 +76,7 @@ void exportSVGDistance(const Image &image, const std::string &filename, const do
     double val  = std::sqrt((image.getX(image(i)) - image.getX(i))*(image.getX(image(i)) - image.getX(i))+
                            (image.getY(image(i)) - image.getY(i))*(image.getY(image(i)) - image.getY(i)));
     
-    auto col = std::to_string((int)std::round((val*255/(double)max ))) + ",0,0";
+    auto col = std::to_string((int)std::round((val*255/(double)maxDistance ))) + ",0,0";
     if (image(i)==i) col="40,40,255";
     ofs<<"<rect x=\""<<image.getX(i)*scale<<"\" y=\""<< image.getY(i)*scale<<"\"  width=\""<<scale<<"\"  height=\""<<scale<<"\" style=\"fill:rgb("<<  col << ")\" />"<<std::endl;
   }
@@ -89,6 +91,7 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
   Image<Index> voromap(source.width(), source.height());
   const Index infty =source.width()*source.height() + 1;
   
+  //At point (x,y) which one between siteA and siteB is the closest?
   auto closest = [&source](const Index x, const Index y,
                            const Index siteA, const Index siteB)
   {
@@ -97,6 +100,8 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
     return (x-sAx)*(x-sAx) + (y-sAy)*(y-sAy) > (x-sBx)*(x-sBx) + (y-sBy)*(y-sBy);
   };
   
+  //On a vertical slab "slabX", do sites A and C hide the site B ?
+  //(if true, the cell of C does not intersect the slab)
   auto hiddenBy = [&source](const Index A, const Index B, const Index C,
                             const Index slabX)
   {
@@ -140,7 +145,9 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
   for(auto x = 0; x < source.width(); ++x)
   {
     std::vector<Index> sites;
-    //Looking for the sites
+    sites.reserve(source.height());
+    //Looking for the sites with non empty intersection between
+    //their voronoi cell and the vertical slab at "x"
     for(auto y = 0; y < source.height(); ++y)
       if (voromap(x,y) != infty)
       {
@@ -149,7 +156,6 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
           sites.pop_back();
         sites.push_back( voromap(x,y) );
       }
-        
     //Rewrite
     Index pos = 0;
     if (sites.size()==1)
@@ -170,15 +176,18 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
 
 int main()
 {
-  //init
+  //Empty image with random sites
+  //Sites are the grid points with value 42.0
   Image<double> test(64,64);
   for(auto i = 0 ; i < 64; ++i)
     test( rand() % (64*64) ) = 42.0;
   exportSVG(test,"test.svg");
-  
+
   Image<Index> voro = computeVoronoiMap<double>(test, [](const double val){ return (val==42)? true:false; } );
     
+  //Export of the Voronoi map
   exportSVG(voro,"result.svg");
+  //Export of the distance field
   exportSVGDistance(voro,"result-dt.svg",8);
 
   return 0;
