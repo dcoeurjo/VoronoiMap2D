@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <vector>
 #include <array>
-#include <assert.h>
+#include <functional>
 #include <iomanip>
 #include <fstream>
 #include <cmath>
@@ -111,9 +111,6 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
     return (c * dB -  b*dA - a*dC - a*b*c) > 0 ;
   };
   
-  auto print =[&](const Index pos){if (pos == infty) return std::string("(inf)");
-    else return "("+std::to_string(source.getX(pos))+","+std::to_string(source.getY(pos))+")["+std::to_string(pos)+"]";};
-  
 #pragma omp parallel for schedule(dynamic)
   for(auto y = 0; y < source.height(); ++y)
   {
@@ -139,15 +136,6 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
       }
     }
   }
-  std::cout<<"First Step"<<std::endl;
-  for(auto y=0; y < voromap.height(); ++y)
-  {
-    for(auto x=0; x < voromap.width(); ++x)
-      std::cout<<print(voromap(x,y))<<" ";
-    std::cout<<std::endl;
-  }
-  std::cout<<std::endl;
-  
 #pragma omp parallel for schedule(dynamic)
   for(auto x = 0; x < source.width(); ++x)
   {
@@ -158,18 +146,10 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
       {
         while (( sites.size() >= 2 ) &&
                (hiddenBy(sites[sites.size()-2], sites[sites.size()-1] , voromap(x,y) ,x)))
-        {
-          std::cout<<"Poping "<<print(sites[sites.size()-1])<<std::endl;
           sites.pop_back();
-        }
         sites.push_back( voromap(x,y) );
       }
-    
-    std::cout<<"Sites: "<<std::endl;
-    for(auto i=0; i < sites.size(); ++i)
-      std::cout<<print(sites[i])<<" - ";
-    std::cout<<std::endl;
-    
+        
     //Rewrite
     Index pos = 0;
     if (sites.size()==1)
