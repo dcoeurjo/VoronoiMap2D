@@ -29,6 +29,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <array>
 #include <assert.h>
+#include <iomanip>
+#include <fstream>
+#include <cmath>
 
 //#include "VoronoiMap2D.h"
 
@@ -52,11 +55,36 @@ struct Image{
   std::vector<T> m_data;
 };
 
+template <typename Image>
+void exportSVG(const Image &image, const std::string &filename, const int scale=10)
+{
+  std::ofstream ofs (filename, std::ofstream::out);
+  ofs<<"<svg width=\""<< image.width() * scale<<"\" height=\""<<image.height()*scale<<"\">"<<std::endl;
+  for(auto i=0; i < image.m_data.size();++i)
+    ofs<<"<rect x=\""<<image.getX(i)*scale<<"\" y=\""<< image.getY(i)*scale<<"\"  width=\""<<scale<<"\"  height=\""<<scale<<"\" style=\"fill:rgb("<< 255-(int)image(i) *12 %256<<","<<255-(int)image(i) *123 %256<<","<<255-(int)image(i) *7 %256<< ")\"  stroke=\"lightgray\"/>"<<std::endl;
+  ofs<<"</svg>"<<std::endl;
+}
+template <typename Image>
+void exportSVGDistance(const Image &image, const std::string &filename, const double max=255.0, const int scale=10)
+{
+  std::ofstream ofs (filename, std::ofstream::out);
+  ofs<<"<svg width=\""<< image.width() * scale<<"\" height=\""<<image.height()*scale<<"\">"<<std::endl;
+  for(auto i=0; i < image.m_data.size();++i)
+  {
+    double val  = std::sqrt((image.getX(image(i)) - image.getX(i))*(image.getX(image(i)) - image.getX(i))+
+                           (image.getY(image(i)) - image.getY(i))*(image.getY(image(i)) - image.getY(i)));
+    
+    auto col = std::to_string((int)std::round((val*255/(double)max ))) + ",0,0";
+    if (image(i)==i) col="40,40,255";
+    ofs<<"<rect x=\""<<image.getX(i)*scale<<"\" y=\""<< image.getY(i)*scale<<"\"  width=\""<<scale<<"\"  height=\""<<scale<<"\" style=\"fill:rgb("<<  col << ")\" />"<<std::endl;
+  }
+  ofs<<"</svg>"<<std::endl;
+}
 
-auto sitePredicate =  [](double val){ return (val==42)? true:false; };
+
 
 template<typename T>
-Image<Index> computeVoronoiMap(const Image<T> &source)
+Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(const T)>& sitePredicate)
 {
   Image<Index> voromap(source.width(), source.height());
   const Index infty =source.width()*source.height() + 1;
@@ -64,7 +92,6 @@ Image<Index> computeVoronoiMap(const Image<T> &source)
   auto closest = [&source](const Index x, const Index y,
                            const Index siteA, const Index siteB)
   {
-    std::cout<<"Closest" ;
     auto sAx=source.getX(siteA), sAy=source.getY(siteA);
     auto sBx=source.getX(siteB), sBy=source.getY(siteB);
     return (x-sAx)*(x-sAx) + (y-sAy)*(y-sAy) > (x-sBx)*(x-sBx) + (y-sBy)*(y-sBy);
@@ -73,29 +100,30 @@ Image<Index> computeVoronoiMap(const Image<T> &source)
   auto hiddenBy = [&source](const Index A, const Index B, const Index C,
                             const Index slabX)
   {
+    std::cout<<"Checking "<<A<<" -- "<<B<<" -- "<<C<<" along ="<<slabX<<std::endl;
     auto sAx=source.getX(A), sAy=source.getY(A);
     auto sBx=source.getX(B), sBy=source.getY(B);
     auto sCx=source.getX(C), sCy=source.getY(C);
-    int a,b, c;
+    int a,b,c;
     a = sBy - sAy;
     b = sCy - sBy;
     c = a + b;
-    int d2_A=sAx*sAx, d2_B=sBx*sBx, d2_C=sCx*sCx;
-    return (c * d2_B -  b*d2_A - a*d2_C - a*b*c) > 0 ;
+    int dA=(sAx-slabX)*(sAx-slabX), dB=(sBx-slabX)*(sBx-slabX), dC=(sCx-slabX)*(sCx-slabX);
+    return (c * dB -  b*dA - a*dC - a*b*c) > 0 ;
   };
   
   auto print =[&](const Index pos){if (pos == infty) return std::string("(inf)");
-    else return "("+std::to_string(source.getX(pos))+","+std::to_string(source.getY(pos))+") ["+std::to_string(pos)+"]";};
+    else return "("+std::to_string(source.getX(pos))+","+std::to_string(source.getY(pos))+")["+std::to_string(pos)+"]";};
   
   std::cout<<"infty= "<<infty<< " " <<print(infty)<<std::endl;
-#pragma omp parallel for schedule(dynamic)
+//#pragma omp parallel for schedule(dynamic)
   for(auto y = 0; y < source.height(); ++y)
   {
     Index prev=infty;
     bool firstSite=true;
     for (Index x=0; x < source.width(); ++x)
     {
-      voromap(x,y) = source.index(prev,y);
+      voromap(x,y) = std::min(infty,source.index(prev,y));
       if (sitePredicate(source(x,y)))
       {
         Index site =source.index(x,y);
@@ -122,61 +150,41 @@ Image<Index> computeVoronoiMap(const Image<T> &source)
   }
   std::cout<<std::endl;
   
-  
 //#pragma omp parallel for schedule(dynamic)
-  for(auto x = 0; x < 1; ++x)// source.width(); ++x)
+  for(auto x = 0; x < source.width(); ++x)
   {
-    std::vector<Index> sites(source.height());
-    std::size_t nbSites=0;
+    std::vector<Index> sites;
     //Looking for the sites
     for(auto y = 0; y < source.height(); ++y)
       if (voromap(x,y) != infty)
-        sites[nbSites++] = voromap(x,y);
+      {
+        while (( sites.size() >= 2 ) &&
+               (hiddenBy(sites[sites.size()-2], sites[sites.size()-1] , voromap(x,y) ,x)))
+        {
+          std::cout<<"Poping "<<print(sites[sites.size()-1])<<std::endl;
+          sites.pop_back();
+        }
+        sites.push_back( voromap(x,y) );
+      }
     
     std::cout<<"Sites: "<<std::endl;
-    for(auto i=0; i < nbSites; ++i)
+    for(auto i=0; i < sites.size(); ++i)
       std::cout<<print(sites[i])<<" - ";
     std::cout<<std::endl;
     
-    //Prune
-    std::vector<bool> remove(nbSites,false);
-    Index pos = 2;
-    if (nbSites>=2)
-    {
-      Index A=0, B=1, C=2;
-      while (( C < nbSites ) &&
-             ( hiddenBy(sites[A],sites[B],sites[C],x)))
-      {
-        //remove B
-        std::cout<<"Hidden by : "<<print(sites[B])<<std::endl;
-        remove[B]=true;
-        B++;
-        C++;
-      }
-    }
-    
-    std::cout<<"Sites: "<<std::endl;
-      for(auto i=0; i < nbSites; ++i)
-        std::cout<<print(sites[i])<< (remove[i]? "X":"ok") <<" - ";
-      std::cout<<std::endl;
-      
-    
     //Rewrite
-    pos = 0;
-    if (nbSites==1)
+    Index pos = 0;
+    if (sites.size()==1)
       for(auto y = 0; y < source.height(); ++y)
         voromap(x,y) = sites[0];
     else
       for(auto y = 0; y < source.height(); ++y)
       {
-        std::cout<<"y= "<<y<<std::endl;
-        while ((pos < (nbSites-1)) &&
-               remove[pos] &&
+        while ((pos < (sites.size()-1)) &&
                (closest( x,y, sites[pos] , sites[pos+1])))
           pos ++;
         voromap(x,y) = sites[pos];
       }
-    
   }
   return voromap;
 }
@@ -185,22 +193,17 @@ Image<Index> computeVoronoiMap(const Image<T> &source)
 int main()
 {
   //init
-  Image<double> test(16,4);
-  test(4,0)  = 42.0;
-  test(12,0) = 42.0;
-  test(8,1)  = 42.0;
-  test(0,3)  = 42.0;
-  test(2,3)  = 42.0;
-  Image<Index> voro = computeVoronoiMap<double>(test);
+  Image<double> test(64,64);
+  for(auto i = 0 ; i < 64; ++i)
+    test( rand() % (64*64) ) = 42.0;
+  exportSVG(test,"test.svg");
 
-  std::cout<<std::endl;
-  std::cout<<std::endl;
+  auto sitePredicate =  [](const double val){ return (val==42)? true:false; };
 
-  for(auto y=0; y < voro.height(); ++y)
-  {
-    for(auto x=0; x < voro.width(); ++x)
-      std::cout<<voro(x,y)<<" ";
-    std::cout<<std::endl;
-  }
+  Image<Index> voro = computeVoronoiMap(test, sitePredicate);
+  
+  exportSVG(voro,"result.svg");
+  exportSVGDistance(voro,"result-dt.svg",8);
+
   return 0;
 }
