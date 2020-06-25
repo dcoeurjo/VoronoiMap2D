@@ -4,7 +4,7 @@ Input:
 ![](test.png)
 
 Voronoi map:
-![](result.png]
+![](result.png)
 
 Distance transform:
-![](result-dt.png]
+![](result-dt.png)
