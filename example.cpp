@@ -84,7 +84,7 @@ void exportSVGDistance(const Image &image, const std::string &filename, const do
 }
 
 
-
+/************** Main function ***************/
 template<typename T>
 Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(const T)>& sitePredicate)
 {
@@ -172,7 +172,7 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
   }
   return voromap;
 }
-
+/*******************************************/
 
 int main()
 {
