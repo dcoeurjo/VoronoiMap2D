@@ -116,6 +116,7 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
     return (c * dB -  b*dA - a*dC - a*b*c) > 0 ;
   };
   
+  //First scan along the rows
 #pragma omp parallel for schedule(dynamic)
   for(auto y = 0; y < source.height(); ++y)
   {
@@ -141,6 +142,8 @@ Image<Index> computeVoronoiMap(const Image<T> &source, const std::function<bool(
       }
     }
   }
+  
+  //Second scan along the columns
 #pragma omp parallel for schedule(dynamic)
   for(auto x = 0; x < source.width(); ++x)
   {
