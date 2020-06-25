@@ -1,6 +1,6 @@
 # VoronoiMap2D
 
-Multithread implementation of the 2D exact Euclidean distance transform algorithm and Voronoi map extraction on the discrete grid.
+Multithread implementation of the 2D exact Euclidean distance transform algorithm and Voronoi map extraction on the discrete grid (using OpenMP only)
 
 For more a more generic implementation (arbitrary dimensions, various metrics, Power diagram, medial axis, toroidal domains...), please have a look to [DGtal](dgtal.org).
 
