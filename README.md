@@ -4,13 +4,8 @@ Multithread implementation of the 2D exact Euclidean distance transform algorith
 
 For more generic implementation (arbitrary dimensions, other metrics), please have a look to [DGtal](dgtal.org).
 
-This project comes alongside with the [lecture note]()
+This project comes alongside with the [lecture note]() (WIP)
 
-Input:
-![](test.png)
-
-Voronoi map:
-![](result.png)
-
-Distance transform:
-![](result-dt.png)
+| Input   | Output Voronoi map | Output distance transformation |
+| ------------- | ------------- | ----------- |
+|![](test.png) | ![](result.png) | ![](result-dt.png)|
