@@ -6,7 +6,7 @@ For more a more generic implementation (arbitrary dimensions, various metrics, P
 
 This project comes alongside with the [lecture note](https://perso.liris.cnrs.fr/david.coeurjolly/courses/voronoimap2d/) (WIP)
 
-**Note:** The exported SVG files may not be valid but fine for inkscape for instance.
+**Note :** The exported SVG files may not be valid 🤷 but fine for inkscape for instance. 
 
 | Input   | Output Voronoi map | Output distance transformation |
 | ------------- | ------------- | ----------- |
